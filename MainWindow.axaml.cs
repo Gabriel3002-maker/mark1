@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -12,6 +13,13 @@ namespace Mark1
 {
     public partial class MainWindow : Window
     {
+
+        public ObservableCollection<ChatMessage> ChatHistory { get; set; }
+
+
+        public TextBox? ResponseTextBox { get; }
+
+
         public MainWindow()
         {
             InitializeComponent();
@@ -20,14 +28,21 @@ namespace Mark1
             InputTextBoxApikey = this.FindControl<TextBox>("InputTextBoxApikey");
             ProviderComboBox = this.FindControl<ComboBox>("ProviderComboBox");
 
-            // Cargar la configuración al iniciar
+
+
+
+            ChatHistory = new ObservableCollection<ChatMessage>();
+            DataContext = this;
+
+
+            // Load configuration on startup
             Configuration config = LoadConfiguration();
             if (config != null)
             {
-                // Asignar la clave API al TextBox
+                // Assign API key to TextBox
                 InputTextBoxApikey.Text = config.ApiKey;
 
-                // Seleccionar el proveedor en el ComboBox
+                // Select provider in ComboBox
                 var item = ProviderComboBox.Items
                     .OfType<ComboBoxItem>()
                     .FirstOrDefault(i => i.Content.ToString() == config.SelectedProvider);
@@ -39,7 +54,6 @@ namespace Mark1
             }
         }
 
-        // Configuración: Guardar los cambios de configuración
         private void ConfigurationProvider(object sender, RoutedEventArgs e)
         {
             string apiKey = InputTextBoxApikey.Text ?? string.Empty;
@@ -61,7 +75,6 @@ namespace Mark1
             Console.WriteLine($"Proveedor: {selectedProvider}\nClave API configurada correctamente.");
         }
 
-        // Guardar configuración en un archivo JSON
         private void SaveConfiguration(string apiKey, string selectedProvider)
         {
             Configuration config = new Configuration
@@ -77,7 +90,6 @@ namespace Mark1
             Console.WriteLine("Configuración guardada.");
         }
 
-        // Cargar configuración desde el archivo JSON
         private Configuration? LoadConfiguration()
         {
             string filePath = "config.json"; // Ruta del archivo JSON
@@ -111,14 +123,15 @@ namespace Mark1
             }
         }
 
-        // Enviar consulta al proveedor seleccionado
+
         private async void OnSendButtonClick(object sender, RoutedEventArgs e)
         {
+
             string userInput = InputTextBox?.Text ?? string.Empty;
 
             if (string.IsNullOrEmpty(userInput))
             {
-                Console.WriteLine("Por favor ingresa una consulta.");
+                Console.WriteLine("Please enter a query.");
                 return;
             }
 
@@ -127,22 +140,36 @@ namespace Mark1
 
             if (string.IsNullOrEmpty(apiKey))
             {
-                Console.WriteLine("La clave API está vacía.");
+                Console.WriteLine("API key is empty.");
                 return;
             }
 
             if (string.IsNullOrEmpty(selectedProvider))
             {
-                Console.WriteLine("Por favor selecciona un proveedor.");
+                Console.WriteLine("Please select a provider.");
                 return;
             }
 
-            // Llamar a la API del proveedor seleccionado
+            ChatHistory.Add(new ChatMessage
+            {
+                Message = $"You: {userInput}",
+                Timestamp = DateTime.Now.ToString("HH:mm:ss")
+            });
+
             string response = await MakeRequestToProvider(selectedProvider, apiKey, userInput);
-            ResponseTextBox.Text = response;
+
+            ChatHistory.Add(new ChatMessage
+            {
+                Message = $"Bot: {response}",
+                Timestamp = DateTime.Now.ToString("HH:mm:ss")
+            });
+
+
+            InputTextBox?.Clear();
         }
 
-        // Llamar a la API del proveedor según la selección
+
+
         private async Task<string> MakeRequestToProvider(string provider, string apiKey, string userInput)
         {
             switch (provider)
@@ -154,11 +181,10 @@ namespace Mark1
                 case "Huggy":
                     return await CallHuggyFaceFunction(apiKey, userInput);
                 default:
-                    return "Proveedor no válido.";
+                    return "Invalid provider.";
             }
         }
 
-        // Llamar a la API de OpenAI
         private async Task<string> CallOpenIAFunction(string apiKey, string userInput)
         {
             string apiUrl = "https://api.openai.com/v1/completions";
@@ -172,75 +198,58 @@ namespace Mark1
                 response.EnsureSuccessStatusCode();
                 var responseBody = await response.Content.ReadAsStringAsync();
                 var jsonResponse = JsonConvert.DeserializeObject<dynamic>(responseBody);
-                return jsonResponse?.choices?[0]?.text?.ToString()?.Trim() ?? "Sin respuesta.";
+                return jsonResponse?.choices?[0]?.text?.ToString()?.Trim() ?? "No response.";
             }
         }
 
-        // Llamar a la API de Gemini
         public async Task<string> CallGemineFunction(string apiKey, string prompt)
-{
-    using (var client = new HttpClient())
-    {
-        string apiUrlGemine = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
-
-        // Crear el objeto de datos para la solicitud
-        var requestData = new
         {
-            contents = new[] {
-                new {
-                    parts = new[] {
-                        new { text = prompt }
+            using (var client = new HttpClient())
+            {
+                try
+                {
+                    string apiUrlGemine = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
+
+                    var requestData = new
+                    {
+                        contents = new[] {
+                    new {
+                        parts = new[] {
+                            new { text = prompt }
+                        }
                     }
                 }
+                    };
+
+                    var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync(apiUrlGemine, jsonContent);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        var jsonResponse = JObject.Parse(responseBody);
+
+                        var text = jsonResponse["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.ToString();
+                        return text ?? "No content found in response";
+                    }
+                    else
+                    {
+                        string errorMessage = $"Error: {response.StatusCode} - {response.ReasonPhrase}";
+                        return errorMessage;
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    return $"HttpRequestException: {ex.Message}";
+                }
+                catch (Exception ex)
+                {
+                    return $"Exception: {ex.Message}";
+                }
             }
-        };
-
-        // Convertir el objeto a JSON
-        var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
-
-        // Enviar la solicitud POST
-        var response = await client.PostAsync(apiUrlGemine, jsonContent);
-
-        // Asegurarse de que la respuesta sea exitosa
-        response.EnsureSuccessStatusCode();
-
-        // Leer la respuesta como string
-        var responseBody = await response.Content.ReadAsStringAsync();
-
-        // Parsear la respuesta JSON
-        var jsonResponse = JObject.Parse(responseBody);
-
-        // Acceder al valor del texto en la respuesta (suponiendo que la estructura de la respuesta es la misma que el ejemplo)
-        var text = jsonResponse["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.ToString() ?? "Error de Respuesta";
-
-        return text;
-    }
-}
-
-
-
-
-        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            // Obtiene el ComboBox desde el sender (el control que disparó el evento)
-            ComboBox comboBox = sender as ComboBox;
-
-            // Obtiene el proveedor seleccionado
-            string selectedProvider = (comboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? string.Empty;
-
-            // Verifica que el proveedor seleccionado no esté vacío
-            if (string.IsNullOrEmpty(selectedProvider))
-            {
-                Console.WriteLine("No provider selected.");
-                return;
-            }
-
-            // Aquí puedes llamar a la función correspondiente para cada proveedor
-            string apiKey = InputTextBoxApikey.Text ?? string.Empty;
         }
 
 
-        // Llamar a la API de Hugging Face
         private async Task<string> CallHuggyFaceFunction(string apiKey, string userInput)
         {
             string apiUrl = "https://api-inference.huggingface.co/models/openai-community/gpt2";
@@ -249,16 +258,55 @@ namespace Mark1
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
                 var requestData = new { inputs = userInput };
                 var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
-                var response = await client.PostAsync(apiUrl, jsonContent);
 
-                response.EnsureSuccessStatusCode();
-                var responseBody = await response.Content.ReadAsStringAsync();
-                var jsonResponse = JsonConvert.DeserializeObject<dynamic>(responseBody);
-                return jsonResponse?[0]?.generated_text?.ToString()?.Trim() ?? "Sin respuesta.";
+                try
+                {
+                    var response = await client.PostAsync(apiUrl, jsonContent);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        return $"Error {response.StatusCode}: {response.ReasonPhrase}";
+                    }
+
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    var jsonResponse = JsonConvert.DeserializeObject<dynamic>(responseBody);
+                    return jsonResponse?[0]?.generated_text?.ToString()?.Trim() ?? "No response.";
+                }
+                catch (HttpRequestException ex)
+                {
+                    return $"Request error: {ex.Message}";
+                }
+                catch (Exception ex)
+                {
+                    return $"Unexpected error: {ex.Message}";
+                }
             }
         }
+
+
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ComboBox comboBox = sender as ComboBox;
+
+            string selectedProvider = (comboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? string.Empty;
+
+            if (string.IsNullOrEmpty(selectedProvider))
+            {
+                Console.WriteLine("No provider selected.");
+                return;
+            }
+
+            string apiKey = InputTextBoxApikey.Text ?? string.Empty;
+        }
+
+
+
     }
 
-
+    public class ChatMessage
+    {
+        public string Message { get; set; }
+        public string Timestamp { get; set; }
+    }
 
 }

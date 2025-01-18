@@ -2,46 +2,70 @@
     x:Class="Mark1.MainWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Icon="/Assets/icono.ico"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:Mark1"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="Mark1"
-    Width="400"
-    Height="500"
-    Background="#1F1F1F" 
+    Width="450"
+    Height="600"
+    x:DataType="local:MainWindow"
+    Background="#F0F2F5"
     mc:Ignorable="d">
 
     <Window.Styles>
-        <!--  Button Style -->
         <Style Selector="Button">
-            <Setter Property="Background" Value="#B91C1C" />
-            <Setter Property="Foreground" Value="White" /> 
+            <Setter Property="Background" Value="#25D366" />
+            <Setter Property="Foreground" Value="White" />
             <Setter Property="FontSize" Value="16" />
-            <Setter Property="Padding" Value="10,5" />
-            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
-        <!--  TextBox Style -->
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="#333333" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="BorderBrush" Value="#CED4DA" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
         <Style Selector="TextBox">
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="Padding" Value="8" />
-            <Setter Property="BorderBrush" Value="#FFD700" /> 
-            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="BorderBrush" Value="#CED4DA" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="CornerRadius" Value="8" />
         </Style>
 
-        <!--  TextBlock Style -->
         <Style Selector="TextBlock">
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="Foreground" Value="White" /> 
+            <Setter Property="Foreground" Value="#333333" />
+        </Style>
+
+        <Style Selector="TabItem">
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Padding" Value="10,5" />
+        </Style>
+
+        <Style Selector="Separator">
+            <Setter Property="Background" Value="#CED4DA" />
+            <Setter Property="Height" Value="1" />
         </Style>
     </Window.Styles>
 
-    <StackPanel Margin="20" Spacing="10">
+    <StackPanel Margin="20" Spacing="20">
         <TabControl Margin="5">
-            <!--  Configuration Tab -->
             <TabItem Header="Configuration">
-                <StackPanel>
-                    <TextBlock FontWeight="Bold" Text="Select your provider:" />
+                <StackPanel Spacing="15">
+                    <TextBlock
+                        FontSize="16"
+                        FontWeight="Bold"
+                        Text="Select your provider:" />
                     <ComboBox
                         Name="ProviderComboBox"
                         MaxDropDownHeight="100"
@@ -51,51 +75,127 @@
                         <ComboBoxItem>Huggy</ComboBoxItem>
                     </ComboBox>
 
-                    <TextBlock FontWeight="Bold" Text="Key:" />
+                    <TextBlock
+                        FontSize="16"
+                        FontWeight="Bold"
+                        Text="Key:" />
                     <TextBox Name="InputTextBoxApikey" Watermark="Enter your API key" />
 
-                    <Separator
-                        Height="1"
-                        Margin="0,10,0,10"
-                        Background="#A1A1A1" /> 
-
-                    <!--  Save Configuration Button -->
                     <Button Click="ConfigurationProvider" Content="Save" />
                 </StackPanel>
             </TabItem>
 
-            <!--  Home Tab -->
             <TabItem Header="Home">
-                <StackPanel>
-                    <TextBlock FontWeight="Bold" Text="Enter your question:" />
-                    <TextBox Name="InputTextBox" Watermark="Enter your questions..." />
+                <Border
+                    Background="#FFFFFF"
+                    BorderBrush="#CED4DA"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                    <!--  Send Query Button -->
-                    <Button Click="OnSendButtonClick" Content="Send" />
+                        <TextBlock
+                            Grid.Row="0"
+                            Margin="10,10,10,5"
+                            FontSize="16"
+                            FontWeight="Bold"
+                            Text="Chat History:" />
 
-                    <Separator
-                        Height="1"
-                        Margin="0,10,0,10"
-                        Background="#A1A1A1" /> 
+                        <ScrollViewer
+                            Grid.Row="1"
+                            Height="250"
+                            HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto">
+                            <ListBox
+                                Name="ChatHistoryListBox"
+                                Background="#F9F9F9"
+                                IsEnabled="False"
+                                ItemsSource="{Binding ChatHistory}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="local:ChatMessage">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
 
-                    <TextBlock FontWeight="Bold" Text="Result:" />
-                    <TextBox
-                        Name="ResponseTextBox"
-                        Background="#2D2D2D"
-                        IsReadOnly="True"
-                        Watermark="Response" />
-                </StackPanel>
+                                            <TextBox
+                                                Grid.Row="0"
+                                                MaxWidth="300"
+                                                Margin="0,0,0,5"
+                                                BorderBrush="Transparent"
+                                                FontSize="12"
+                                                Foreground="#A1A1A1"
+                                                IsReadOnly="True"
+                                                Text="{Binding Message}"
+                                                TextWrapping="Wrap" />
+
+
+
+
+
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                FontSize="12"
+                                                Foreground="Red"
+                                                Text="{Binding Timestamp}" />
+                                        </Grid>
+
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </ScrollViewer>
+
+                        <TextBlock
+                            Grid.Row="2"
+                            Margin="10,10,10,5"
+                            FontSize="16"
+                            FontWeight="Bold"
+                            Text="Enter your question:" />
+
+                        <TextBox
+                            Name="InputTextBox"
+                            Grid.Row="3"
+                            Margin="10,5"
+                            Watermark="Enter your question..." />
+
+                        <Button
+                            Grid.Row="4"
+                            Margin="10,5"
+                            Click="OnSendButtonClick"
+                            Content="Send" />
+                    </Grid>
+                </Border>
             </TabItem>
 
-            <!--  Help Tab -->
-            <TabItem Header="Help">
-                <StackPanel>
-                    <TextBlock FontWeight="Bold" Text="Client the IA" />
-                    <TextBlock FontWeight="Bold" Text="Ecuabyte Software" />
+
+            <TabItem Header="About">
+                <StackPanel Spacing="20">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="Cliente para Conectarse a Modelos IA " />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text=" (Open IA, Gemine, Huggy Face)" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        Text="Desarrollado en C# por EcuByte, 2025" />
                     <Separator
-                        Height="1"
-                        Margin="0,10,0,10"
-                        Background="#A1A1A1" /> 
+                        Height="2"
+                        Margin="0,20"
+                        Background="#25D366" />
                 </StackPanel>
             </TabItem>
         </TabControl>
